@@ -1,0 +1,24 @@
+# dependencies
+/node_modules
+
+# environment
+.env
+.env.local
+.env.*.local
+
+# build / output
+/dist
+/build
+/coverage
+
+# database
+*.sqlite
+*.db
+*.log
+
+# misc
+.DS_Store
+Thumbs.db
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
