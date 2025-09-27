@@ -1,4 +1,3 @@
-// migrations/20250920_create_availabilities.js
 exports.up = function(knex) {
   return knex.schema.createTable('availabilities', function(table) {
     table.increments('id').primary();
