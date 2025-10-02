@@ -85,3 +85,67 @@ export async function login({email, password}) {
 
     return { user: {id: user.id, email: user.email, name: user.name, role: user.role } ,accessToken, refreshToken };
 }
+
+export async function refresh({presentedToken}) {
+    let payload;
+    try{
+        payload = jwt.verify(presentedToken, REFRESH_SECRET)
+    } catch(err) {
+        const e = new Error("Invalid refresh token");
+        e.status = 401;
+        throw e;
+    }
+
+    const tokenHash = hashToken(presentedToken);
+    const record = await tokensModel.findByHash(tokenHash);
+
+    if(!record) {
+        if(payload && payload.sub) {
+            await tokensModel.revokeAllForUser(payload.sub);
+        }
+
+        const err = new Error("Refresh token not found (possible reuse)");
+        err.status = 401;
+        throw err;
+    }
+
+    if(record.revoked) {
+        await tokensModel.revokeAllForUser(record.user_id);
+        const err = new Error("Refresh token revoked (possible compromise)");
+        err.status = 401;
+        throw err;
+    }
+
+    if(record.expires_at && new Date(record.expires_at) < new Date()) {
+        
+        await tokensModel.revokeByID(record.id);
+        const err = new Error("Refresh token expired");
+        err.status = 401;
+        throw err;
+    }
+
+    await tokensModel.revokeByID(record.id);
+    const user = await usersModel.getUserByID(record.user_id);
+    if(!user) {
+        const err = new Error("User not found");
+        err.status = 404;
+        throw err;
+    }
+
+    const newRefresh = signRefresh(user);
+    const newHash = hashToken(newRefresh);
+    const expires_at = new Date(Date.now() + expiryToMs(REFRESH_EXP));
+
+    await tokensModel.insertToken({ user_id: user.id, token_hash: newHash, expires_at });
+
+    const newAccess = signAccess(user);
+    
+    return { user: {id: user.id, email: user.email, name: user.name, role: user.role }, accessToken: newAccess, refreshToken: newRefresh };
+}
+
+export async function logOut({presentedToken}) {
+    if(!presentedToken) return;
+    
+    const tokenHash = hashToken(presentedToken);
+    await tokensModel.revokeByHash(tokenHash);
+}
