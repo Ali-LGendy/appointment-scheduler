@@ -61,9 +61,43 @@ export const register = async (req, res, next) => {
 }
 
 export const logOut = async (req, res, next) => {
+    try{
+        const { refreshToken } = req.cookie?.refreshToken;
+        if(refreshToken){
+            await authService.logOut({presentedToken: refreshToken});
+            req.clearCookie('refreshToken');
 
+            res.json({success: true});
+        }
+        else {
+            res.status(400).json({ message: "Refresh token not provided" });
+        }
+    } catch(err) {
+        next(err);
+    }
 }
 
 export const refresh = async (reqq, res, next) => {
+    try{
+        const refreshToken = req.cookie?.refreshToken;
+        if(!refreshToken) {
+            res.status(401).json({ message: "Refresh token not provided" });
+        }
 
+        const { accessToken, refreshToken: newRefresh, user } = await authService.refreshToken({ presentedToken: refreshToken });
+        
+        res.cookie('refreshToken', newRefresh, cookieOpition());
+        res.status(200).json({
+            message: "Token refreshed successfully",
+            accessToken,
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+    } catch {
+        next(err);
+    }
 }
