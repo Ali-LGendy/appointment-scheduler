@@ -101,3 +101,20 @@ export const refresh = async (reqq, res, next) => {
         next(err);
     }
 }
+
+export const me = async (req, res, next) => {
+    try {
+        const user = req.user;
+        res.status(200).json({
+            message: "User fetched successfully",
+            user: {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                role: user.role
+            }
+        });
+    } catch(err) {
+        next(err);
+    }
+}
